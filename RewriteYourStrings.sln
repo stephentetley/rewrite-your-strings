@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28729.10
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RYS", "src\RYS.fsproj", "{A7604018-2A5D-4C1C-8B25-95FD02CFBC41}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RYSTest", "test\RYSTest.fsproj", "{84D7D002-CCDF-4B12-8A1C-3A85E1150199}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7604018-2A5D-4C1C-8B25-95FD02CFBC41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7604018-2A5D-4C1C-8B25-95FD02CFBC41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7604018-2A5D-4C1C-8B25-95FD02CFBC41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7604018-2A5D-4C1C-8B25-95FD02CFBC41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84D7D002-CCDF-4B12-8A1C-3A85E1150199}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84D7D002-CCDF-4B12-8A1C-3A85E1150199}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84D7D002-CCDF-4B12-8A1C-3A85E1150199}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84D7D002-CCDF-4B12-8A1C-3A85E1150199}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BF2112A-7085-4521-8E70-A9848637E8EE}
+	EndGlobalSection
+EndGlobal
