@@ -70,3 +70,447 @@ module RewriteMonad =
         | Error msg -> Error msg
         | Ok(output, _) -> Ok output
 
+    let unsafeRewrite (ma:RewriteMonad<'a>) (input:string) : string = 
+        match rewrite ma input with
+        | Error msg -> failwith msg
+        | Ok ans -> ans
+
+
+    // ****************************************************
+    // Errors
+
+    let throwError (msg: string) : RewriteMonad<'a> = 
+        RewriteMonad <| fun _ -> Error msg
+
+
+    let swapError (msg: string) 
+                  (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
+        RewriteMonad <| fun input ->
+            match apply1 ma input with
+            | Error _ -> Error msg
+            | Ok a -> Ok a
+
+
+    /// Execute an action that may throw a system exception.
+    /// Capture the exception with try ... with
+    /// and return the answer or the expection message in the monad.
+    let attemptM (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
+        RewriteMonad <| fun input -> 
+            try
+                apply1 ma input
+            with
+            | ex -> Error (sprintf "attemptM: %s" ex.Message)
+
+
+    // ****************************************************
+    // Monadic operations
+
+
+    let assertM (cond:RewriteMonad<bool>) 
+                (failMsg:string) : RewriteMonad<unit> = 
+        rewriteMonad { 
+            match! cond with
+            | true -> return ()
+            | false -> throwError failMsg |> ignore
+        }
+
+    let whenM (cond:RewriteMonad<bool>) 
+              (failMsg:string) 
+              (successOp:unit -> RewriteMonad<'a>) = 
+        rewriteMonad { 
+            let! ans = cond
+            if ans then 
+                let! res = successOp ()
+                return res
+            else throwError failMsg |> ignore
+        } 
+
+    /// fmap 
+    let fmapM (fn:'a -> 'b) (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        RewriteMonad <| fun input -> 
+           match apply1 ma input with
+           | Error msg -> Error msg
+           | Ok (input1, a) -> Ok (input1, fn a)
+
+
+    // liftM (which is fmap)
+    let liftM (fn:'a -> 'x) (ma:RewriteMonad<'a>) : RewriteMonad<'x> = 
+        fmapM fn ma
+
+    let liftM2 (fn:'a -> 'b -> 'x) 
+               (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) : RewriteMonad<'x> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            return (fn a b)
+        }
+
+    let liftM3 (fn:'a -> 'b -> 'c -> 'x) 
+               (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) : RewriteMonad<'x> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            let! c = mc
+            return (fn a b c)
+        }
+
+    let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'x) 
+               (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) : RewriteMonad<'x> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            let! c = mc
+            let! d = md
+            return (fn a b c d)
+        }
+
+
+    let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'x) 
+               (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) 
+               (me:RewriteMonad<'e>) : RewriteMonad<'x> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            let! c = mc
+            let! d = md
+            let! e = me
+            return (fn a b c d e)
+        }
+
+    let liftM6 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'x) 
+               (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) 
+               (me:RewriteMonad<'e>) 
+               (mf:RewriteMonad<'f>) : RewriteMonad<'x> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            let! c = mc
+            let! d = md
+            let! e = me
+            let! f = mf
+            return (fn a b c d e f)
+        }
+
+
+    let tupleM2 (ma:RewriteMonad<'a>) 
+                (mb:RewriteMonad<'b>) : RewriteMonad<'a * 'b> = 
+        liftM2 (fun a b -> (a,b)) ma mb
+
+    let tupleM3 (ma:RewriteMonad<'a>) 
+                (mb:RewriteMonad<'b>) 
+                (mc:RewriteMonad<'c>) : RewriteMonad<'a * 'b * 'c> = 
+        liftM3 (fun a b c -> (a,b,c)) ma mb mc
+
+    let tupleM4 (ma:RewriteMonad<'a>) 
+                (mb:RewriteMonad<'b>) 
+                (mc:RewriteMonad<'c>) 
+                (md:RewriteMonad<'d>) : RewriteMonad<'a * 'b * 'c * 'd> = 
+        liftM4 (fun a b c d -> (a,b,c,d)) ma mb mc md
+
+    let tupleM5 (ma:RewriteMonad<'a>) 
+                (mb:RewriteMonad<'b>) 
+                (mc:RewriteMonad<'c>) 
+                (md:RewriteMonad<'d>) 
+                (me:RewriteMonad<'e>) : RewriteMonad<'a * 'b * 'c * 'd * 'e> = 
+        liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
+
+    let tupleM6 (ma:RewriteMonad<'a>) 
+                (mb:RewriteMonad<'b>) 
+                (mc:RewriteMonad<'c>) 
+                (md:RewriteMonad<'d>) 
+                (me:RewriteMonad<'e>) 
+                (mf:RewriteMonad<'f>) : RewriteMonad<'a * 'b * 'c * 'd * 'e * 'f> = 
+        liftM6 (fun a b c d e f -> (a,b,c,d,e,f)) ma mb mc md me mf
+
+    let pipeM2 (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (fn:'a -> 'b -> 'x) : RewriteMonad<'x> = 
+        liftM2 fn ma mb
+
+    let pipeM3 (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (fn:'a -> 'b -> 'c -> 'x) : RewriteMonad<'x> = 
+        liftM3 fn ma mb mc
+
+    let pipeM4 (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) 
+               (fn:'a -> 'b -> 'c -> 'd -> 'x) : RewriteMonad<'x> = 
+        liftM4 fn ma mb mc md
+
+    let pipeM5 (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) 
+               (me:RewriteMonad<'e>) 
+               (fn:'a -> 'b -> 'c -> 'd -> 'e ->'x) : RewriteMonad<'x> = 
+        liftM5 fn ma mb mc md me
+
+    let pipeM6 (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'b>) 
+               (mc:RewriteMonad<'c>) 
+               (md:RewriteMonad<'d>) 
+               (me:RewriteMonad<'e>) 
+               (mf:RewriteMonad<'f>) 
+               (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'x) : RewriteMonad<'x> = 
+        liftM6 fn ma mb mc md me mf
+
+    /// Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
+    let altM (ma:RewriteMonad<'a>) (mb:RewriteMonad<'a>) : RewriteMonad<'a> = 
+        combineM ma mb
+
+
+    /// Haskell Applicative's (<*>)
+    let apM (mf:RewriteMonad<'a ->'b>) (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        rewriteMonad { 
+            let! fn = mf
+            let! a = ma
+            return (fn a) 
+        }
+
+
+
+    /// Perform two actions in sequence. 
+    /// Ignore the results of the second action if both succeed.
+    let seqL (ma:RewriteMonad<'a>) (mb:RewriteMonad<'b>) : RewriteMonad<'a> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            return a
+        }
+
+    /// Perform two actions in sequence. 
+    /// Ignore the results of the first action if both succeed.
+    let seqR (ma:RewriteMonad<'a>) (mb:RewriteMonad<'b>) : RewriteMonad<'b> = 
+        rewriteMonad { 
+            let! a = ma
+            let! b = mb
+            return b
+        }
+
+
+    /// Optionally run a computation. 
+    /// If the build fails return None otherwise retun Some<'a>.
+    let optionalM (ma:RewriteMonad<'a>) : RewriteMonad<'a option> = 
+        RewriteMonad <| fun input ->
+            match apply1 ma input with
+            | Error _ -> Ok (input, None)
+            | Ok (input1, a) -> Ok (input1, Some a)
+
+
+    let optionFailM (errMsg:string)
+                    (ma:RewriteMonad<'a option>) : RewriteMonad<'a> = 
+        bindM ma (fun opt -> 
+                    match opt with
+                    | Some ans -> mreturn ans
+                    | None -> throwError errMsg)
+
+
+    let kleisliL (mf:'a -> RewriteMonad<'b>)
+                 (mg:'b -> RewriteMonad<'c>)
+                 (source:'a) : RewriteMonad<'c> = 
+        rewriteMonad { 
+            let! b = mf source
+            let! c = mg b
+            return c
+        }
+
+    /// Flipped kleisliL
+    let kleisliR (mf:'b -> RewriteMonad<'c>)
+                 (mg:'a -> RewriteMonad<'b>)
+                 (source:'a) : RewriteMonad<'c> = 
+        rewriteMonad { 
+            let! b = mg source
+            let! c = mf b
+            return c
+        }
+
+    // ****************************************************
+    // Recursive functions
+
+
+    /// Implemented in CPS 
+    let mapM (mf: 'a -> RewriteMonad<'b>) 
+             (source:'a list) : RewriteMonad<'b list> = 
+        RewriteMonad <| fun input -> 
+            let rec work (xs:'a list) (input1:string) 
+                         (fk: ErrMsg -> Answer<'b list>) 
+                         (sk: string -> 'b list -> Answer<'b list>) = 
+                match xs with
+                | [] -> sk input1 []
+                | y :: ys -> 
+                    match apply1 (mf y) input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, ans1) -> 
+                        work ys input2 fk (fun input3 anslist ->
+                        sk input3 (ans1::anslist))
+            work source input (fun msg -> Error msg) (fun st ans -> Ok (st, ans))
+
+    /// Flipped mapM
+    let forM (source:'a list) 
+             (mf: 'a -> RewriteMonad<'b>) : RewriteMonad<'b list> = 
+        mapM mf source
+
+    /// Forgetful mapM
+    let mapMz (mf: 'a -> RewriteMonad<'b>) 
+              (source:'a list) : RewriteMonad<unit> = 
+        RewriteMonad <| fun input -> 
+            let rec work (xs:'a list) (input1:string) 
+                         (fk: ErrMsg -> Answer<unit>) 
+                         (sk: string -> Answer<unit>) = 
+                match xs with
+                | [] -> sk input1
+                | y :: ys -> 
+                    match apply1 (mf y) input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, _) -> 
+                        work ys input2 fk (fun input3 ->
+                        sk input3)
+            work source input (fun msg -> Error msg) (fun st -> Ok (st, ()))
+
+    /// Flipped mapMz
+    let forMz (source:'a list) 
+              (mf: 'a -> RewriteMonad<'b>) : RewriteMonad<unit> = 
+        mapMz mf source
+
+
+    /// Implemented in CPS 
+    let mapiM (mf:int -> 'a -> RewriteMonad<'b>) 
+              (source:'a list) : RewriteMonad<'b list> = 
+        RewriteMonad <| fun input -> 
+            let rec work (xs: 'a list) (n: int) (input1: string) 
+                         (fk: ErrMsg -> Answer<'b list>) 
+                         (sk: string -> 'b list -> Answer<'b list>) = 
+                match xs with
+                | [] -> sk input1 []
+                | y :: ys -> 
+                    match apply1 (mf n y) input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, ans1) -> 
+                        work ys (n+1) input2 fk (fun input3 anslist ->
+                        sk input3 (ans1::anslist))
+            work source 0 input (fun msg -> Error msg) (fun st ans -> Ok (st, ans))
+
+    /// Flipped mapMi
+    let foriM (source:'a list) 
+              (mf: int -> 'a -> RewriteMonad<'b>)  : RewriteMonad<'b list> = 
+        mapiM mf source
+
+    /// Forgetful mapiM
+    let mapiMz (mf: int -> 'a -> RewriteMonad<'b>) 
+              (source:'a list) : RewriteMonad<unit> = 
+        RewriteMonad <| fun input -> 
+            let rec work (xs:'a list) (n:int) (input1:string) 
+                         (fk: ErrMsg -> Answer<unit>) 
+                         (sk: string -> Answer<unit>) = 
+                match xs with
+                | [] -> sk input1
+                | y :: ys -> 
+                    match apply1 (mf n y) input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, _) -> 
+                        work ys (n+1) input2 fk (fun input3 ->
+                        sk input3)
+            work source 0 input (fun msg -> Error msg) (fun st -> Ok (st, ()))
+
+    /// Flipped mapiMz
+    let foriMz (source:'a list) 
+               (mf: int -> 'a -> RewriteMonad<'b>) : RewriteMonad<unit> = 
+        mapiMz mf source
+
+    // ****************************************************
+    // Operators
+
+    // ****************************************************
+    // Errors
+
+    /// Operator for swapError
+    let ( <?&> ) (msg:string) (ma:RewriteMonad<'a>) : RewriteMonad<'a> = 
+        swapError msg ma
+
+    /// Operator for flip swapError
+    let ( <&?> ) (ma:RewriteMonad<'a>) (msg:string) : RewriteMonad<'a> = 
+        swapError msg ma
+
+
+    // ****************************************************
+    // Monadic operations
+
+    /// Bind operator
+    let ( >>= ) (ma:RewriteMonad<'a>) 
+              (fn:'a -> RewriteMonad<'b>) : RewriteMonad<'b> = 
+        bindM ma fn
+
+    /// Flipped Bind operator
+    let ( =<< ) (fn:'a -> RewriteMonad<'b>) 
+              (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        bindM ma fn
+
+
+    /// Operator for fmap.
+    let ( |>> ) (ma:RewriteMonad<'a>) (fn:'a -> 'b) : RewriteMonad<'b> = 
+        fmapM fn ma
+
+    /// Flipped fmap.
+    let ( <<| ) (fn:'a -> 'b) (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        fmapM fn ma
+
+    /// Operator for altM
+    let ( <||> ) (ma:RewriteMonad<'a>) 
+               (mb:RewriteMonad<'a>) : RewriteMonad<'a> = 
+        altM ma mb 
+
+
+    /// Operator for apM
+    let ( <**> ) (ma:RewriteMonad<'a -> 'b>) 
+               (mb:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        apM ma mb
+
+    /// Operator for fmapM
+    let ( <&&> ) (fn:'a -> 'b) (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
+        fmapM fn ma
+
+
+
+    /// Operator for seqL
+    let (.>>) (ma:RewriteMonad<'a>) 
+              (mb:RewriteMonad<'b>) : RewriteMonad<'a> = 
+        seqL ma mb
+
+    /// Operator for seqR
+    let (>>.) (ma:RewriteMonad<'a>) 
+              (mb:RewriteMonad<'b>) : RewriteMonad<'b> = 
+        seqR ma mb
+
+
+
+    /// Operator for kleisliL
+    let (>=>) (mf : 'a -> RewriteMonad<'b>)
+              (mg : 'b -> RewriteMonad<'c>)
+              (source:'a) : RewriteMonad<'c> = 
+        kleisliL mf mg source
+
+
+    /// Operator for kleisliR
+    let (<=<) (mf : 'b -> RewriteMonad<'c>)
+              (mg : 'a -> RewriteMonad<'b>)
+              (source:'a) : RewriteMonad<'c> = 
+        kleisliR mf mg source
+
+
+
+
