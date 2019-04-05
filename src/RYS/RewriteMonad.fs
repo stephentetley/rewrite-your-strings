@@ -5,6 +5,7 @@ namespace RYS
 
 module RewriteMonad =
 
+    open System.Text.RegularExpressions
 
     type ErrMsg = string
 
@@ -512,5 +513,35 @@ module RewriteMonad =
         kleisliR mf mg source
 
 
+    // ****************************************************
+    // Rewriting
 
+    /// Fails when nothing is replaced.
+    let replaceAllRe (pattern:string) 
+                     (replacement:string) : RewriteMonad<unit> = 
+        RewriteMonad <| fun input -> 
+            let regexp = new Regex(pattern)
+            let result = regexp.Match(input)
+            if result.Success then 
+                let output = regexp.Replace(input, replacement)
+                Ok (output, ())
+            else
+                Error "replaceAllRe"
 
+    /// Fails when nothing is replaced.
+    let replaceCountRe (pattern:string) 
+                       (count:int)
+                       (replacement:string) : RewriteMonad<unit> = 
+        RewriteMonad <| fun input -> 
+            let regexp = new Regex(pattern)
+            let result = regexp.Match(input)
+            if result.Success then 
+                let output = regexp.Replace(input, replacement, count)
+                Ok (output, ())
+            else
+                Error "replaceCountRe"
+
+    /// Fails when nothing is replaced.
+    let replace1Re (pattern:string) 
+                   (replacement:string) : RewriteMonad<unit> = 
+        replaceCountRe pattern 1 replacement <&?> "replace1Re"
