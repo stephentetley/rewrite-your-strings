@@ -343,6 +343,37 @@ module RewriteMonad =
     // ****************************************************
     // Recursive functions
 
+    /// Implemented in CPS
+    let sequenceM (actions: RewriteMonad<'a> list) : RewriteMonad<'a list> = 
+        RewriteMonad <| fun input -> 
+            let rec work (acts:RewriteMonad<'a> list) (input1:string) 
+                         (fk: ErrMsg -> Answer<'a list>) 
+                         (sk: string -> 'a list -> Answer<'a list>) = 
+                match acts with
+                | [] -> sk input1 []
+                | ma :: rest -> 
+                    match apply1 ma input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, ans1) -> 
+                        work rest input2 fk (fun input3 anslist ->
+                        sk input3 (ans1::anslist))
+            work actions input (fun msg -> Error msg) (fun st ans -> Ok (st, ans))
+
+    /// Implemented in CPS
+    let sequenceMz (actions: RewriteMonad<'a> list) : RewriteMonad<unit> = 
+        RewriteMonad <| fun input -> 
+            let rec work (acts:RewriteMonad<'a> list) (input1:string) 
+                         (fk: ErrMsg -> Answer<unit>) 
+                         (sk: string -> Answer<unit>) = 
+                match acts with
+                | [] -> sk input1
+                | ma :: rest -> 
+                    match apply1 ma input1 with
+                    | Error msg -> fk msg
+                    | Ok (input2, _) -> 
+                        work rest input2 fk (fun input3 ->
+                        sk input3)
+            work actions input (fun msg -> Error msg) (fun st -> Ok (st, ()))
 
     /// Implemented in CPS 
     let mapM (mf: 'a -> RewriteMonad<'b>) 
@@ -525,6 +556,9 @@ module RewriteMonad =
             with
             | _ -> Error errMsg
 
+    let stringMap (errMsg:string) (charOp:char -> char) : Rewrite =
+        withInput errMsg <| fun s -> String.map charOp s 
+
 
     let trim : Rewrite = 
         withInput "trim" <| fun s -> s.Trim()
@@ -540,6 +574,12 @@ module RewriteMonad =
 
     let padRight (totalWidth:int) (paddingChar:char) : Rewrite = 
         withInput "padRight" <| fun s -> s.PadRight(totalWidth, paddingChar)
+
+    let toUpper : Rewrite = 
+        stringMap "toUpper" System.Char.ToUpper
+
+    let toLower : Rewrite = 
+        stringMap "toUpper" System.Char.ToLower
 
 
     /// Returns input string if nothing is replaced.

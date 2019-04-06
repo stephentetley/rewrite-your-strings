@@ -33,3 +33,13 @@ let demo05 () =
     let proc = choice [replaceAllRe "2" "two"; replaceAllRe "1" "one"; replaceAllRe "3" "three"]
     unsafeRewrite proc "3-4-5-6-1-0" 
 
+
+let demo06 () = 
+    unsafeRewrite toUpper "hello world" 
+
+
+let demo07 () = 
+    unsafeRewrite (sequenceMz [trim; toUpper]) "hello world    "
+
+
+
