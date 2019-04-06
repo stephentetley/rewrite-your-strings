@@ -29,3 +29,7 @@ let demo04 () =
     let proc = replace1Re "1" "one"
     unsafeRewrite proc "1-2-3-2-1" 
 
+let demo05 () = 
+    let proc = choice [replaceAllRe "2" "two"; replaceAllRe "1" "one"; replaceAllRe "3" "three"]
+    unsafeRewrite proc "3-4-5-6-1-0" 
+

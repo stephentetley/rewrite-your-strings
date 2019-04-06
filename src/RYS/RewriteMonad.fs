@@ -80,7 +80,7 @@ module RewriteMonad =
     // ****************************************************
     // Errors
 
-    let throwError (msg: string) : RewriteMonad<'a> = 
+    let rewriteError (msg: string) : RewriteMonad<'a> = 
         RewriteMonad <| fun _ -> Error msg
 
 
@@ -112,7 +112,7 @@ module RewriteMonad =
         rewriteMonad { 
             match! cond with
             | true -> return ()
-            | false -> throwError failMsg |> ignore
+            | false -> rewriteError failMsg |> ignore
         }
 
     let whenM (cond:RewriteMonad<bool>) 
@@ -123,7 +123,7 @@ module RewriteMonad =
             if ans then 
                 let! res = successOp ()
                 return res
-            else throwError failMsg |> ignore
+            else rewriteError failMsg |> ignore
         } 
 
     /// fmap 
@@ -318,7 +318,7 @@ module RewriteMonad =
         bindM ma (fun opt -> 
                     match opt with
                     | Some ans -> mreturn ans
-                    | None -> throwError errMsg)
+                    | None -> rewriteError errMsg)
 
 
     let kleisliL (mf:'a -> RewriteMonad<'b>)
@@ -516,32 +516,74 @@ module RewriteMonad =
     // ****************************************************
     // Rewriting
 
-    /// Fails when nothing is replaced.
-    let replaceAllRe (pattern:string) 
-                     (replacement:string) : RewriteMonad<unit> = 
-        RewriteMonad <| fun input -> 
-            let regexp = new Regex(pattern)
-            let result = regexp.Match(input)
-            if result.Success then 
-                let output = regexp.Replace(input, replacement)
-                Ok (output, ())
-            else
-                Error "replaceAllRe"
+    type Rewrite = RewriteMonad<unit>
 
-    /// Fails when nothing is replaced.
+    let withInput (errMsg:string) (operation:string -> string) : Rewrite =
+        RewriteMonad <| fun input ->
+            try 
+                let output = operation input in Ok(output, ())
+            with
+            | _ -> Error errMsg
+
+
+    let trim : Rewrite = 
+        withInput "trim" <| fun s -> s.Trim()
+
+    let trimStart : Rewrite = 
+        withInput "trimStart" <| fun s -> s.TrimStart()
+
+    let trimEnd : Rewrite = 
+        withInput "trimEnd" <| fun s -> s.TrimEnd()
+
+    let padLeft (totalWidth:int) (paddingChar:char) : Rewrite = 
+        withInput "padLeft" <| fun s -> s.PadLeft(totalWidth, paddingChar)
+
+    let padRight (totalWidth:int) (paddingChar:char) : Rewrite = 
+        withInput "padRight" <| fun s -> s.PadRight(totalWidth, paddingChar)
+
+
+    /// Returns input string if nothing is replaced.
+    let replaceAllRe (pattern:string) 
+                     (replacement:string) : Rewrite = 
+        withInput "replaceAllRe" <| fun input -> 
+            let regexp = new Regex(pattern) in regexp.Replace(input, replacement)
+
+
+    /// Returns input string if nothing is replaced.
     let replaceCountRe (pattern:string) 
                        (count:int)
-                       (replacement:string) : RewriteMonad<unit> = 
-        RewriteMonad <| fun input -> 
-            let regexp = new Regex(pattern)
-            let result = regexp.Match(input)
-            if result.Success then 
-                let output = regexp.Replace(input, replacement, count)
-                Ok (output, ())
-            else
-                Error "replaceCountRe"
+                       (replacement:string) : Rewrite = 
+        withInput "replaceCountRe" <| fun input -> 
+            let regexp = new Regex(pattern) in regexp.Replace(input, replacement, count)
+                
 
-    /// Fails when nothing is replaced.
+    /// Returns input string if nothing is replaced.
     let replace1Re (pattern:string) 
-                   (replacement:string) : RewriteMonad<unit> = 
+                   (replacement:string) : Rewrite = 
         replaceCountRe pattern 1 replacement <&?> "replace1Re"
+
+    // ************************************************************************
+    // Combinators 
+
+    /// Run the rewrite, succeed if the input has changed. Fail on no change.
+    let progressive (ma:RewriteMonad<'a>) : RewriteMonad<'a> = 
+        RewriteMonad <| fun input -> 
+            match apply1 ma input with
+            | Error msg -> Error msg
+            | Ok(output,a) -> 
+                if output <> input then 
+                    Ok(output,a)
+                else Error "progressive"
+
+    let either (ma:RewriteMonad<'a>) (mb:RewriteMonad<'a>) : RewriteMonad<'a> = 
+        progressive ma <||> progressive mb
+
+    let choice (rewriters:RewriteMonad<'a> list) : RewriteMonad<'a> = 
+        let rec work (fs:RewriteMonad<'a> list) = 
+            match fs with
+            | [] -> rewriteError "choice"
+            | (mf :: rest) -> altM (progressive mf) (work rest)
+        work rewriters
+
+
+        
