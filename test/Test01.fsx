@@ -5,9 +5,9 @@
 open System.Text.RegularExpressions
 
 
-#load "..\src\RYS\RewriteMonad.fs"
+#load "..\src\RewriteYourStrings\RewriteMonad.fs"
 
-open RYS.RewriteMonad
+open RewriteYourStrings.RewriteMonad
     
 let demo01 () : string = 
     let proc = 

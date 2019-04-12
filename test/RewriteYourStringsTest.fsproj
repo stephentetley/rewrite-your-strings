@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\RYS.fsproj" />
+    <ProjectReference Include="..\src\RewriteYourStrings.fsproj" />
   </ItemGroup>
 
 </Project>
