@@ -114,7 +114,7 @@ module RewriteMonad =
             apply1 ma (modify opts) input
 
     let ignoreCase (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
-        optionsLocal (fun opts -> RegexOptions.IgnoreCase + opts) ma
+        optionsLocal (fun opts -> RegexOptions.IgnoreCase ||| opts) ma
 
 
     // ****************************************************
