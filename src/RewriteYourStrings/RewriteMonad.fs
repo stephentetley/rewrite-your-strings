@@ -14,34 +14,35 @@ module RewriteMonad =
     type private Answer<'a> = Result<string * 'a, ErrMsg> 
 
     type RewriteMonad<'a> = 
-        RewriteMonad of (string -> Answer<'a>)
+        RewriteMonad of (RegexOptions -> string -> Answer<'a>)
 
     let inline private apply1 (ma: RewriteMonad<'a>) 
+                              (options:RegexOptions)
                               (input: string) : Answer<'a>= 
-        let (RewriteMonad f) = ma in f input
+        let (RewriteMonad f) = ma in f options input
 
 
     let inline mreturn (x:'a) : RewriteMonad<'a> = 
-        RewriteMonad <| fun input -> Ok (input, x)
+        RewriteMonad <| fun opts input -> Ok (input, x)
 
 
     let inline private bindM (ma: RewriteMonad<'a>) 
                         (f :'a -> RewriteMonad<'b>) : RewriteMonad<'b> =
-        RewriteMonad <| fun input -> 
-            match apply1 ma input with
+        RewriteMonad <| fun opts input -> 
+            match apply1 ma opts input with
             | Error msg -> Error msg
-            | Ok (input2, a) -> apply1 (f a) input2
+            | Ok (input2, a) -> apply1 (f a) opts input2
 
     let inline private zeroM () : RewriteMonad<'a> = 
-        RewriteMonad <| fun _ -> Error "zeroM"
+        RewriteMonad <| fun _ _ -> Error "zeroM"
 
     /// "First success" 
     /// If mfirst fails tray to apply msecond
     let inline private combineM (mfirst:RewriteMonad<'a>) 
                                 (msecond:RewriteMonad<'a>) : RewriteMonad<'a> = 
-        RewriteMonad <| fun input -> 
-            match apply1 mfirst input with
-            | Error msg -> apply1 msecond input
+        RewriteMonad <| fun opts input -> 
+            match apply1 mfirst opts input with
+            | Error msg -> apply1 msecond opts input
             | Ok a -> Ok a
 
 
@@ -64,12 +65,12 @@ module RewriteMonad =
 
     /// This runs the finalizer on userResources
     let runRewriteMonad (input:string) 
-            (ma:RewriteMonad<'a>) : Result<string *'a, ErrMsg> = 
-        apply1 ma input
+                        (ma:RewriteMonad<'a>) : Result<string *'a, ErrMsg> = 
+        apply1 ma RegexOptions.None input
 
     let rewrite (ma:RewriteMonad<'a>) (input:string) 
                  : Result<string, ErrMsg> = 
-        match apply1 ma input with
+        match apply1 ma RegexOptions.None input with
         | Error msg -> Error msg
         | Ok(output, _) -> Ok output
 
@@ -83,13 +84,13 @@ module RewriteMonad =
     // Errors
 
     let rewriteError (msg: string) : RewriteMonad<'a> = 
-        RewriteMonad <| fun _ -> Error msg
+        RewriteMonad <| fun _ _ -> Error msg
 
 
     let swapError (msg: string) 
                   (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
-        RewriteMonad <| fun input ->
-            match apply1 ma input with
+        RewriteMonad <| fun opts input ->
+            match apply1 ma opts input with
             | Error _ -> Error msg
             | Ok a -> Ok a
 
@@ -98,11 +99,22 @@ module RewriteMonad =
     /// Capture the exception with try ... with
     /// and return the answer or the expection message in the monad.
     let attemptM (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             try
-                apply1 ma input
+                apply1 ma opts input
             with
             | ex -> Error (sprintf "attemptM: %s" ex.Message)
+
+    // ****************************************************
+    // Regex Options
+
+    let optionsLocal (modify : RegexOptions -> RegexOptions)
+                     (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
+        RewriteMonad <| fun opts input -> 
+            apply1 ma (modify opts) input
+
+    let ignoreCase (ma: RewriteMonad<'a>) : RewriteMonad<'a> = 
+        optionsLocal (fun opts -> RegexOptions.IgnoreCase + opts) ma
 
 
     // ****************************************************
@@ -130,8 +142,8 @@ module RewriteMonad =
 
     /// fmap 
     let fmapM (fn:'a -> 'b) (ma:RewriteMonad<'a>) : RewriteMonad<'b> = 
-        RewriteMonad <| fun input -> 
-           match apply1 ma input with
+        RewriteMonad <| fun opts input -> 
+           match apply1 ma opts input with
            | Error msg -> Error msg
            | Ok (input1, a) -> Ok (input1, fn a)
 
@@ -309,8 +321,8 @@ module RewriteMonad =
     /// Optionally run a computation. 
     /// If the build fails return None otherwise retun Some<'a>.
     let optionalM (ma:RewriteMonad<'a>) : RewriteMonad<'a option> = 
-        RewriteMonad <| fun input ->
-            match apply1 ma input with
+        RewriteMonad <| fun opts input ->
+            match apply1 ma opts input with
             | Error _ -> Ok (input, None)
             | Ok (input1, a) -> Ok (input1, Some a)
 
@@ -347,14 +359,14 @@ module RewriteMonad =
 
     /// Implemented in CPS
     let sequenceM (actions: RewriteMonad<'a> list) : RewriteMonad<'a list> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (acts:RewriteMonad<'a> list) (input1:string) 
                          (fk: ErrMsg -> Answer<'a list>) 
                          (sk: string -> 'a list -> Answer<'a list>) = 
                 match acts with
                 | [] -> sk input1 []
                 | ma :: rest -> 
-                    match apply1 ma input1 with
+                    match apply1 ma opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, ans1) -> 
                         work rest input2 fk (fun input3 anslist ->
@@ -363,14 +375,14 @@ module RewriteMonad =
 
     /// Implemented in CPS
     let sequenceMz (actions: RewriteMonad<'a> list) : RewriteMonad<unit> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (acts:RewriteMonad<'a> list) (input1:string) 
                          (fk: ErrMsg -> Answer<unit>) 
                          (sk: string -> Answer<unit>) = 
                 match acts with
                 | [] -> sk input1
                 | ma :: rest -> 
-                    match apply1 ma input1 with
+                    match apply1 ma opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, _) -> 
                         work rest input2 fk (fun input3 ->
@@ -380,14 +392,14 @@ module RewriteMonad =
     /// Implemented in CPS 
     let mapM (mf: 'a -> RewriteMonad<'b>) 
              (source:'a list) : RewriteMonad<'b list> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (xs:'a list) (input1:string) 
                          (fk: ErrMsg -> Answer<'b list>) 
                          (sk: string -> 'b list -> Answer<'b list>) = 
                 match xs with
                 | [] -> sk input1 []
                 | y :: ys -> 
-                    match apply1 (mf y) input1 with
+                    match apply1 (mf y) opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, ans1) -> 
                         work ys input2 fk (fun input3 anslist ->
@@ -402,14 +414,14 @@ module RewriteMonad =
     /// Forgetful mapM
     let mapMz (mf: 'a -> RewriteMonad<'b>) 
               (source:'a list) : RewriteMonad<unit> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (xs:'a list) (input1:string) 
                          (fk: ErrMsg -> Answer<unit>) 
                          (sk: string -> Answer<unit>) = 
                 match xs with
                 | [] -> sk input1
                 | y :: ys -> 
-                    match apply1 (mf y) input1 with
+                    match apply1 (mf y) opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, _) -> 
                         work ys input2 fk (fun input3 ->
@@ -425,14 +437,14 @@ module RewriteMonad =
     /// Implemented in CPS 
     let mapiM (mf:int -> 'a -> RewriteMonad<'b>) 
               (source:'a list) : RewriteMonad<'b list> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (xs: 'a list) (n: int) (input1: string) 
                          (fk: ErrMsg -> Answer<'b list>) 
                          (sk: string -> 'b list -> Answer<'b list>) = 
                 match xs with
                 | [] -> sk input1 []
                 | y :: ys -> 
-                    match apply1 (mf n y) input1 with
+                    match apply1 (mf n y) opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, ans1) -> 
                         work ys (n+1) input2 fk (fun input3 anslist ->
@@ -447,14 +459,14 @@ module RewriteMonad =
     /// Forgetful mapiM
     let mapiMz (mf: int -> 'a -> RewriteMonad<'b>) 
               (source:'a list) : RewriteMonad<unit> = 
-        RewriteMonad <| fun input -> 
+        RewriteMonad <| fun opts input -> 
             let rec work (xs:'a list) (n:int) (input1:string) 
                          (fk: ErrMsg -> Answer<unit>) 
                          (sk: string -> Answer<unit>) = 
                 match xs with
                 | [] -> sk input1
                 | y :: ys -> 
-                    match apply1 (mf n y) input1 with
+                    match apply1 (mf n y) opts input1 with
                     | Error msg -> fk msg
                     | Ok (input2, _) -> 
                         work ys (n+1) input2 fk (fun input3 ->
@@ -551,31 +563,31 @@ module RewriteMonad =
 
     type Rewrite = RewriteMonad<unit>
 
-    let withInput (errMsg:string) (operation:string -> string) : Rewrite =
-        RewriteMonad <| fun input ->
+    let withInput (errMsg:string) (operation:RegexOptions -> string -> string) : Rewrite =
+        RewriteMonad <| fun opts input ->
             try 
-                let output = operation input in Ok(output, ())
+                let output = operation opts input in Ok(output, ())
             with
             | _ -> Error errMsg
 
     let stringMap (errMsg:string) (charOp:char -> char) : Rewrite =
-        withInput errMsg <| fun s -> String.map charOp s 
+        withInput errMsg <| fun _ s -> String.map charOp s 
 
 
     let trim : Rewrite = 
-        withInput "trim" <| fun s -> s.Trim()
+        withInput "trim" <| fun _ s -> s.Trim()
 
     let trimStart : Rewrite = 
-        withInput "trimStart" <| fun s -> s.TrimStart()
+        withInput "trimStart" <| fun _ s -> s.TrimStart()
 
     let trimEnd : Rewrite = 
-        withInput "trimEnd" <| fun s -> s.TrimEnd()
+        withInput "trimEnd" <| fun _ s -> s.TrimEnd()
 
     let padLeft (totalWidth:int) (paddingChar:char) : Rewrite = 
-        withInput "padLeft" <| fun s -> s.PadLeft(totalWidth, paddingChar)
+        withInput "padLeft" <| fun _ s -> s.PadLeft(totalWidth, paddingChar)
 
     let padRight (totalWidth:int) (paddingChar:char) : Rewrite = 
-        withInput "padRight" <| fun s -> s.PadRight(totalWidth, paddingChar)
+        withInput "padRight" <| fun _ s -> s.PadRight(totalWidth, paddingChar)
 
     let toUpper : Rewrite = 
         stringMap "toUpper" System.Char.ToUpper
@@ -587,16 +599,18 @@ module RewriteMonad =
     /// Returns input string if nothing is replaced.
     let replaceAllRe (pattern:string) 
                      (replacement:string) : Rewrite = 
-        withInput "replaceAllRe" <| fun input -> 
-            let regexp = new Regex(pattern) in regexp.Replace(input, replacement)
+        withInput "replaceAllRe" <| fun opts input -> 
+            let regexp = new Regex(pattern = pattern, options = opts) 
+            regexp.Replace(input = input, replacement = replacement)
 
 
     /// Returns input string if nothing is replaced.
     let replaceCountRe (pattern:string) 
                        (count:int)
                        (replacement:string) : Rewrite = 
-        withInput "replaceCountRe" <| fun input -> 
-            let regexp = new Regex(pattern) in regexp.Replace(input, replacement, count)
+        withInput "replaceCountRe" <| fun opts input -> 
+            let regexp = new Regex(pattern = pattern, options = opts)
+            regexp.Replace(input, replacement, count)
                 
 
     /// Returns input string if nothing is replaced.
@@ -609,8 +623,8 @@ module RewriteMonad =
 
     /// Run the rewrite, succeed if the input has changed. Fail on no change.
     let progressive (ma:RewriteMonad<'a>) : RewriteMonad<'a> = 
-        RewriteMonad <| fun input -> 
-            match apply1 ma input with
+        RewriteMonad <| fun opts input -> 
+            match apply1 ma opts input with
             | Error msg -> Error msg
             | Ok(output,a) -> 
                 if output <> input then 
@@ -631,22 +645,28 @@ module RewriteMonad =
     // ************************************************************************
     // Queries
     
+    type Query<'a> = RewriteMonad<'a>
+
     let queryInput (errMsg:string) 
-                   (query:string -> 'a) : RewriteMonad<'a> =
-        RewriteMonad <| fun input ->
+                   (query:RegexOptions -> string -> 'a) : RewriteMonad<'a> =
+        RewriteMonad <| fun opts input ->
             try 
-                Ok(input, query input)
+                Ok(input, query opts input)
             with
             | _ -> Error errMsg
 
-    let equals (needle:string) : RewriteMonad<bool> = 
-        queryInput "equals" (fun input -> input = needle)
+    let equals (target:string) : Query<bool> = 
+        queryInput "equals" (fun _ input -> input = target)
 
 
-    let isMatch (pattern:string) : RewriteMonad<bool> = 
+    let isMatch (pattern:string) : Query<bool> = 
         queryInput "equals" 
-            <| fun input -> Regex.IsMatch(input = input, pattern = pattern)
+            <| fun opts input -> Regex.IsMatch(input = input
+                                              , pattern = pattern
+                                              , options = opts)
 
-    let levenshteinDistance (other:string) : RewriteMonad<int> = 
+    let levenshteinDistance (target:string) : Query<int> = 
         queryInput "levenshteinDistance"
-            <| fun input -> Levenshtein.distance input other
+            <| fun _ input -> Levenshtein.distance input target
+
+
