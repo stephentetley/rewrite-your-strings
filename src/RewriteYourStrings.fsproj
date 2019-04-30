@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="RewriteYourStrings\Internal\Levenshtein.fs" />
     <Compile Include="RewriteYourStrings\RewriteMonad.fs" />
   </ItemGroup>
 

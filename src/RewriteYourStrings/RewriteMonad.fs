@@ -7,6 +7,8 @@ module RewriteMonad =
 
     open System.Text.RegularExpressions
 
+    open RewriteYorStrings.Internal
+
     type ErrMsg = string
 
     type private Answer<'a> = Result<string * 'a, ErrMsg> 
@@ -626,4 +628,25 @@ module RewriteMonad =
         work rewriters
 
 
-        
+    // ************************************************************************
+    // Queries
+    
+    let queryInput (errMsg:string) 
+                   (query:string -> 'a) : RewriteMonad<'a> =
+        RewriteMonad <| fun input ->
+            try 
+                Ok(input, query input)
+            with
+            | _ -> Error errMsg
+
+    let equals (needle:string) : RewriteMonad<bool> = 
+        queryInput "equals" (fun input -> input = needle)
+
+
+    let isMatch (pattern:string) : RewriteMonad<bool> = 
+        queryInput "equals" 
+            <| fun input -> Regex.IsMatch(input = input, pattern = pattern)
+
+    let levenshteinDistance (other:string) : RewriteMonad<int> = 
+        queryInput "levenshteinDistance"
+            <| fun input -> Levenshtein.distance input other
