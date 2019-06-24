@@ -8,6 +8,8 @@
   <ItemGroup>
     <Compile Include="RewriteYourStrings\Internal\Levenshtein.fs" />
     <Compile Include="RewriteYourStrings\RewriteMonad.fs" />
+    <Compile Include="RewriteYourStrings\Query.fs" />
+    <Compile Include="RewriteYourStrings\Transform.fs" />
   </ItemGroup>
 
 </Project>

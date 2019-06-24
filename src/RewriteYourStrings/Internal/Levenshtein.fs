@@ -1,15 +1,15 @@
 ﻿// Copyright (c) Stephen Tetley 2019
 // License: BSD 3 Clause
 
-namespace RewriteYorStrings.Internal
+namespace RewriteYourStrings.Internal
 
 
 [<RequireQualifiedAccess>]
 module Levenshtein = 
 
 
-    let inline private arraySwap (a:int[]) (b:int[]) : unit = 
-        for i = 0 to (a.Length-1) do a.[i] <- b.[i]
+    let inline private arraySwap (a : int[]) (b : int[]) : unit = 
+        for i = 0 to (a.Length - 1) do a.[i] <- b.[i]
 
     /// This is the Wikipedia two-matrix rows algorithm
     /// https://en.wikipedia.org/wiki/Levenshtein_distance#Iterative_with_two_matrix_rows

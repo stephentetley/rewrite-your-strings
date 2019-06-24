@@ -5,10 +5,13 @@
 open System.Text.RegularExpressions
 
 
+#load "..\src\RewriteYourStrings\Internal\Levenshtein.fs"
 #load "..\src\RewriteYourStrings\RewriteMonad.fs"
-
+#load "..\src\RewriteYourStrings\Query.fs"
+#load "..\src\RewriteYourStrings\Transform.fs"
 open RewriteYourStrings.RewriteMonad
-    
+open RewriteYourStrings
+
 let demo01 () : string = 
     let proc = 
         rewriteMonad { return 1 }
