@@ -10,15 +10,38 @@ module Transform =
 
     open RewriteYourStrings.RewriteMonad
 
+    // ************************************************************************
+    // Combinators 
+
+
+    let either (ma:StringRewriter<'a>) (mb:StringRewriter<'a>) : StringRewriter<'a> = 
+        progressive ma <||> progressive mb
+
+    let choice (rewriters:StringRewriter<'a> list) : StringRewriter<'a> = 
+        let rec work (fs:StringRewriter<'a> list) = 
+            match fs with
+            | [] -> rewriteError "choice"
+            | (mf :: rest) -> altM (progressive mf) (work rest)
+        work rewriters
+
+
     // ****************************************************
     // Rewriting
 
-    type Rewrite = RewriteMonad<unit>
+    type Rewrite = StringRewriter<unit>
+
+    let modify (operation:string -> string) : Rewrite =
+        rewrite { 
+            let! source = getInput ()
+            return! setInput (operation source)
+        }
+
+
 
     let withInput (errMsg:string) (operation:RegexOptions -> string -> string) : Rewrite =
-        RewriteMonad <| fun opts input ->
+        StringRewriter <| fun opts input ->
             try 
-                let output = operation opts input in Ok(output, ())
+                let output = operation opts input in Ok((), output)
             with
             | _ -> Error errMsg
 
@@ -70,18 +93,10 @@ module Transform =
                    (replacement:string) : Rewrite = 
         replaceCountRe pattern 1 replacement <&?> "replace1Re"
 
-    // ************************************************************************
-    // Combinators 
 
+    let prefix (front : string) : Rewrite = 
+        modify (fun s -> front + s)
+        
 
-    let either (ma:RewriteMonad<'a>) (mb:RewriteMonad<'a>) : RewriteMonad<'a> = 
-        progressive ma <||> progressive mb
-
-    let choice (rewriters:RewriteMonad<'a> list) : RewriteMonad<'a> = 
-        let rec work (fs:RewriteMonad<'a> list) = 
-            match fs with
-            | [] -> rewriteError "choice"
-            | (mf :: rest) -> altM (progressive mf) (work rest)
-        work rewriters
-
-
+    let suffix (tail : string) : Rewrite = 
+        modify (fun s -> s + tail)

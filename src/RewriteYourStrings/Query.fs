@@ -16,13 +16,13 @@ module Query =
     // ************************************************************************
     // Queries
     
-    type StringQuery<'a> = RewriteMonad<'a>
+    type StringQuery<'a> = StringRewriter<'a>
 
     let queryInput (errMsg:string) 
-                   (query:RegexOptions -> string -> 'a) : RewriteMonad<'a> =
-        RewriteMonad <| fun opts input ->
+                   (query:RegexOptions -> string -> 'a) : StringRewriter<'a> =
+        StringRewriter <| fun opts input ->
             try 
-                Ok(input, query opts input)
+                Ok(query opts input, input)
             with
             | _ -> Error errMsg
 

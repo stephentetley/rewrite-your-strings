@@ -14,7 +14,7 @@ open RewriteYourStrings
 
 let demo01 () : string = 
     let proc = 
-        rewriteMonad { return 1 }
+        rewrite { return 1 }
     unsafeRewrite proc "hello world" 
 
 
