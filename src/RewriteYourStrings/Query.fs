@@ -18,30 +18,39 @@ module Query =
     
     type StringQuery<'a> = StringRewriter<'a>
 
-    let queryInput (errMsg:string) 
-                   (query:RegexOptions -> string -> 'a) : StringRewriter<'a> =
-        StringRewriter <| fun opts input ->
-            try 
-                Ok(query opts input, input)
-            with
-            | _ -> Error errMsg
+    let query (query : RegexOptions -> string -> 'a) : StringRewriter<'a> =
+        rewrite { 
+            let! source = getInput ()
+            let! opts = askOptions ()
+            return! (liftOperation <| fun _ -> query opts source)
+        }
 
     let length : StringQuery<int> = 
         getInput () |>> String.length
         
 
     let equals (target:string) : StringQuery<bool> = 
-        queryInput "equals" (fun _ input -> input = target)
+        query (fun _ input -> input = target)
 
 
     let isMatch (pattern:string) : StringQuery<bool> = 
-        queryInput "equals" 
-            <| fun opts input -> Regex.IsMatch(input = input
-                                              , pattern = pattern
-                                              , options = opts)
+        query <| fun opts input -> 
+                    Regex.IsMatch( input = input
+                                 , pattern = pattern
+                                 , options = opts)
+
+
+    let matchValue (pattern:string) : StringQuery<string> = 
+        fromOptionM 
+            << query 
+            <| fun opts input -> 
+                        let rmatch = Regex.Match( input = input
+                                                , pattern = pattern
+                                                , options = opts)
+                        if rmatch.Success then Some rmatch.Value else None
+
 
     let levenshteinDistance (target:string) : StringQuery<int> = 
-        queryInput "levenshteinDistance"
-            <| fun _ input -> Levenshtein.distance input target
+        query <| fun _ input -> Levenshtein.distance input target
 
 

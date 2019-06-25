@@ -44,5 +44,11 @@ let demo06 () =
 let demo07 () = 
     unsafeRewrite (sequenceMz [trim; toUpper]) "hello world    "
 
+let demo08 () = 
+    let source = "1234567890"
+    rewriteOrId (dropLeft 2) source |> printfn "%s"
+    rewriteOrId (takeLeft 4) source |> printfn "%s"
+    rewriteOrId (dropRight 2) source |> printfn "%s"
+    rewriteOrId (takeRight 4) source |> printfn "%s"
 
 

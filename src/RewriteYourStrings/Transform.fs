@@ -48,6 +48,8 @@ module Transform =
     let stringMap (errMsg:string) (charOp:char -> char) : Rewrite =
         withInput errMsg <| fun _ s -> String.map charOp s 
 
+    let append (tail : string) : Rewrite = 
+        modify (fun s -> s + tail)
 
     let trim : Rewrite = 
         withInput "trim" <| fun _ s -> s.Trim()
@@ -70,6 +72,24 @@ module Transform =
     let toLower : Rewrite = 
         stringMap "toUpper" System.Char.ToLower
 
+    let takeLeft (len : int) : Rewrite = 
+        modify (fun s -> s.Substring(0, len))
+
+    let dropLeft (len : int) : Rewrite = 
+        modify (fun s -> s.Substring(len))
+
+    let takeRight (len : int) : Rewrite = 
+        rewrite { 
+            let! size = length
+            return! modify (fun s -> s.Substring(size - len))
+        }
+        
+
+    let dropRight (len : int) : Rewrite = 
+        rewrite { 
+            let! size = length
+            return! modify (fun s -> s.Substring(0, size - len))
+        }
 
     /// Returns input string if nothing is replaced.
     let replaceAllRe (pattern:string) 
@@ -96,7 +116,19 @@ module Transform =
 
     let prefix (front : string) : Rewrite = 
         modify (fun s -> front + s)
+
+    
         
 
-    let suffix (tail : string) : Rewrite = 
-        modify (fun s -> s + tail)
+    let suffix (tail : string) : Rewrite = append tail
+
+
+    let replacePrefix (front : string) : Rewrite = 
+        let len = front.Length
+        dropLeft len .>>  prefix front 
+
+
+
+    let replaceSuffix (tail : string) : Rewrite = 
+        let len = tail.Length
+        dropLeft len .>>  append tail 

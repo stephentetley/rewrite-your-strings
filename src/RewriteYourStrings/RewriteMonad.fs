@@ -96,7 +96,7 @@ module RewriteMonad =
 
         
     let setInput (source : string) : StringRewriter<unit> =
-            StringRewriter <| fun _ _ -> Ok ((), source)
+        StringRewriter <| fun _ _ -> Ok ((), source)
 
     // ****************************************************
     // Errors
@@ -123,8 +123,29 @@ module RewriteMonad =
             with
             | ex -> Error (sprintf "attemptM: %s" ex.Message)
 
+    let liftOperation (operation : unit -> 'a) : StringRewriter<'a> = 
+        try 
+            let ans = operation () in mreturn ans
+        with
+            | ex -> rewriteError "liftOperation" 
+
+    let fromOptionM (maybe : StringRewriter<'a option>) : StringRewriter<'a> = 
+        rewrite { 
+            match! maybe with
+            | None -> return! rewriteError "None"
+            | Some ans -> return ans
+        }
+
     // ****************************************************
     // Regex Options
+
+    let askOptions () : StringRewriter<RegexOptions> = 
+        StringRewriter <| fun opts input -> Ok (opts, input) 
+
+    let asksOptions (select : RegexOptions -> 'a) : StringRewriter<'a> = 
+        StringRewriter <| fun opts input -> Ok (select opts, input) 
+
+
 
     let optionsLocal (modify : RegexOptions -> RegexOptions)
                      (ma: StringRewriter<'a>) : StringRewriter<'a> = 
