@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="DocumentNames.fsx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExcelProvider" Version="1.0.1" />
+  </ItemGroup>
+
+</Project>

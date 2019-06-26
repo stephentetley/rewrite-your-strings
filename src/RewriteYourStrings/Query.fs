@@ -32,8 +32,10 @@ module Query =
     let equals (target:string) : StringQuery<bool> = 
         query (fun _ input -> input = target)
 
+    let isLiteralMatch (sub : string) : StringQuery<bool> = 
+        getInput () |>> fun s -> s.Contains(sub)
 
-    let isMatch (pattern:string) : StringQuery<bool> = 
+    let isRegexMatch (pattern:string) : StringQuery<bool> = 
         query <| fun opts input -> 
                     Regex.IsMatch( input = input
                                  , pattern = pattern

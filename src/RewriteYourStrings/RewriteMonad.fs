@@ -88,6 +88,11 @@ module RewriteMonad =
         | Error _ -> input
         | Ok ans -> ans
 
+    let rewriteOrBlank (ma:StringRewriter<'a>) (input:string) : string = 
+        match runRewrite ma input with
+        | Error _ -> ""
+        | Ok ans -> ans
+
     // ****************************************************
     // Input
 
@@ -168,16 +173,7 @@ module RewriteMonad =
             | false -> rewriteError failMsg |> ignore
         }
 
-    let whenM (cond:StringRewriter<bool>) 
-              (failMsg:string) 
-              (successOp:unit -> StringRewriter<'a>) = 
-        rewrite { 
-            let! ans = cond
-            if ans then 
-                let! res = successOp ()
-                return res
-            else rewriteError failMsg |> ignore
-        } 
+
 
     /// fmap 
     let fmapM (fn:'a -> 'b) (ma:StringRewriter<'a>) : StringRewriter<'b> = 

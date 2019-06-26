@@ -9,6 +9,26 @@ module Transform =
     open System.Text.RegularExpressions
 
     open RewriteYourStrings.RewriteMonad
+    
+    
+
+    type Rewrite = StringRewriter<unit>
+
+    /// TODO we need a naming scheme.
+    /// e.g Should we follow KURE, then we are unlikely to have name clashes?
+    /// This might be uncharacteristic for F# though
+
+    let modify (operation:string -> string) : Rewrite =
+        rewrite { 
+            let! source = getInput ()
+            return! setInput (operation source)
+        }
+
+    let identity : Rewrite = 
+        mreturn ()
+
+    let constR (literal : string) = 
+        modify (fun _ -> literal)
 
     // ************************************************************************
     // Combinators 
@@ -24,17 +44,27 @@ module Transform =
             | (mf :: rest) -> altM (progressive mf) (work rest)
         work rewriters
 
-
-    // ****************************************************
-    // Rewriting
-
-    type Rewrite = StringRewriter<unit>
-
-    let modify (operation:string -> string) : Rewrite =
+    let whenM (cond : StringQuery<bool>) 
+              (successR : Rewrite) = 
         rewrite { 
-            let! source = getInput ()
-            return! setInput (operation source)
-        }
+            let! ans = cond
+            if ans then 
+                return! successR
+            else 
+                return! identity
+        } 
+
+    let unlessM (cond : StringQuery<bool>) 
+                (failureR : Rewrite) = 
+        rewrite { 
+            let! ans = cond
+            if ans then 
+                return! identity
+            else 
+                return! failureR
+        } 
+
+
 
 
 
