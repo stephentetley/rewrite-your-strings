@@ -18,22 +18,57 @@ module Transform =
     /// e.g Should we follow KURE, then we are unlikely to have name clashes?
     /// This might be uncharacteristic for F# though
 
-    let modify (operation:string -> string) : Rewrite =
+    let private guardOperation (operation : RegexOptions -> string -> string option) 
+                                (regexOpts : RegexOptions)
+                                (input : string) : string option = 
+        try 
+            let ans = operation regexOpts input in ans
+        with
+        | _ -> None
+
+
+
+
+    /// Exceptions should be caught.
+    let primitiveRewrite (operation : RegexOptions -> string -> string option) : Rewrite =
         rewrite { 
             let! source = getInput ()
-            return! setInput (operation source)
+            let! regexOpts = askOptions ()
+            match guardOperation operation regexOpts source with
+            | None -> return! rewriteError "primitiveRewrite"
+            | Some ans -> return! setInput ans
         }
 
+    let stringRewriteOption (operation : string -> string option) : Rewrite =
+        primitiveRewrite (fun _ input -> operation input)
+
+    let stringRewrite (operation:string -> string) : Rewrite =
+        primitiveRewrite (fun _ input -> operation input |> Some)
+
+
+    
+    
     let identity : Rewrite = 
         mreturn ()
 
     let constR (literal : string) = 
-        modify (fun _ -> literal)
+        stringRewrite (fun _ -> literal)
 
     // ************************************************************************
     // Combinators 
 
-
+    
+    let execRewrite (action : Rewrite)
+                    (input : string) : StringRewriter<string> = 
+        rewrite { 
+            let! start = getInput ()
+            do! setInput input
+            let! _ = action
+            let! ans = getInput ()
+            do! setInput start
+            return ans
+        }
+    
     let either (ma:StringRewriter<'a>) (mb:StringRewriter<'a>) : StringRewriter<'a> = 
         progressive ma <||> progressive mb
 
@@ -65,36 +100,26 @@ module Transform =
         } 
 
 
-
-
-
-    let withInput (errMsg:string) (operation:RegexOptions -> string -> string) : Rewrite =
-        StringRewriter <| fun opts input ->
-            try 
-                let output = operation opts input in Ok((), output)
-            with
-            | _ -> Error errMsg
-
     let stringMap (errMsg:string) (charOp:char -> char) : Rewrite =
-        withInput errMsg <| fun _ s -> String.map charOp s 
+        stringRewrite <| fun s -> String.map charOp s 
 
     let append (tail : string) : Rewrite = 
-        modify (fun s -> s + tail)
+        stringRewrite (fun s -> s + tail)
 
     let trim : Rewrite = 
-        withInput "trim" <| fun _ s -> s.Trim()
+        stringRewrite <| fun s -> s.Trim()
 
     let trimStart : Rewrite = 
-        withInput "trimStart" <| fun _ s -> s.TrimStart()
+        stringRewrite <| fun s -> s.TrimStart()
 
     let trimEnd : Rewrite = 
-        withInput "trimEnd" <| fun _ s -> s.TrimEnd()
+        stringRewrite <| fun s -> s.TrimEnd()
 
     let padLeft (totalWidth:int) (paddingChar:char) : Rewrite = 
-        withInput "padLeft" <| fun _ s -> s.PadLeft(totalWidth, paddingChar)
+        stringRewrite <| fun s -> s.PadLeft(totalWidth, paddingChar)
 
     let padRight (totalWidth:int) (paddingChar:char) : Rewrite = 
-        withInput "padRight" <| fun _ s -> s.PadRight(totalWidth, paddingChar)
+        stringRewrite <| fun s -> s.PadRight(totalWidth, paddingChar)
 
     let toUpper : Rewrite = 
         stringMap "toUpper" System.Char.ToUpper
@@ -103,49 +128,58 @@ module Transform =
         stringMap "toUpper" System.Char.ToLower
 
     let takeLeft (len : int) : Rewrite = 
-        modify (fun s -> s.Substring(0, len))
+        stringRewrite <| fun s -> s.Substring(0, len)
 
     let dropLeft (len : int) : Rewrite = 
-        modify (fun s -> s.Substring(len))
+        stringRewrite <| fun s -> s.Substring(len)
 
     let takeRight (len : int) : Rewrite = 
         rewrite { 
             let! size = length
-            return! modify (fun s -> s.Substring(size - len))
+            return! stringRewrite (fun s -> s.Substring(size - len))
         }
         
 
     let dropRight (len : int) : Rewrite = 
         rewrite { 
             let! size = length
-            return! modify (fun s -> s.Substring(0, size - len))
+            return! stringRewrite (fun s -> s.Substring(0, size - len))
         }
 
     /// Returns input string if nothing is replaced.
     let replaceAllRe (pattern:string) 
                      (replacement:string) : Rewrite = 
-        withInput "replaceAllRe" <| fun opts input -> 
+        primitiveRewrite <| fun opts input -> 
             let regexp = new Regex(pattern = pattern, options = opts) 
-            regexp.Replace(input = input, replacement = replacement)
+            regexp.Replace(input = input, replacement = replacement) |> Some
 
 
     /// Returns input string if nothing is replaced.
     let replaceCountRe (pattern:string) 
                        (count:int)
                        (replacement:string) : Rewrite = 
-        withInput "replaceCountRe" <| fun opts input -> 
+        primitiveRewrite <| fun opts input -> 
             let regexp = new Regex(pattern = pattern, options = opts)
-            regexp.Replace(input, replacement, count)
+            regexp.Replace(input, replacement, count) |> Some
                 
 
     /// Returns input string if nothing is replaced.
     let replace1Re (pattern:string) 
                    (replacement:string) : Rewrite = 
         replaceCountRe pattern 1 replacement <&?> "replace1Re"
+        
 
-
+    let namedRegexMatch (pattern : string) (name : string) : Rewrite = 
+        primitiveRewrite <| fun opts input -> 
+            let rmatch = Regex.Match(input = input, pattern = pattern)
+            if rmatch.Success then 
+                rmatch.Groups.Item(name).Value |> Some
+            else
+                None
+            
+            
     let prefix (front : string) : Rewrite = 
-        modify (fun s -> front + s)
+        stringRewrite (fun s -> front + s)
 
     
         

@@ -70,11 +70,18 @@ module RewriteMonad =
         | Error msg -> Error msg
         | Ok ans-> Ok ans
 
+    /// TODO - extra rewrites should go in Transform
     let runRewrite (ma : StringRewriter<'a>) 
                    (input : string) : Result<string, ErrMsg> = 
         match apply1 ma RegexOptions.None input with
         | Error msg -> Error msg
         | Ok (_, str) -> Ok str
+
+    let runOptional (ma : StringRewriter<'a>) 
+        (input : string) : string option = 
+            match runRewrite ma input with
+            | Error _ -> None
+            | Ok ans -> Some ans
 
 
     let unsafeRewrite (ma:StringRewriter<'a>) (input:string) : string = 
