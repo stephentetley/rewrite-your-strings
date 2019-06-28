@@ -22,7 +22,7 @@ module RewriteMonad =
         let (StringRewriter f) = ma in f options input
 
 
-    let inline mreturn (x:'a) : StringRewriter<'a> = 
+    let mreturn (x:'a) : StringRewriter<'a> = 
         StringRewriter <| fun opts st -> Ok (x, st)
 
 

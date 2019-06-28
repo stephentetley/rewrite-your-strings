@@ -46,17 +46,25 @@ let mm3xFirmware : Rewrite =
           (constR "<<<Wrong title page, remake file>>>" )
 
 let erskineTooLong1 : Rewrite = 
-    replace1Re "Erskine Battery Asset Replacement Install Sheet" "Erskine Battery Replacement"
+    replace1Re "Erskine Battery Asset Replacement Install Sheet" "S3953 Erskine Battery Replacement"
 
 let erskineTooLong2 : Rewrite = 
-    replace1Re "Erskine Battery Asset Replacement" "Erskine Battery Replacement"
+    replace1Re "Erskine Battery Asset Replacement" "S3953 Erskine Battery Replacement"
 
 
 let mk3mk4Upgrade : Rewrite = 
-    replace1Re "RTU MMIM Upgrade Manual" "RTU Mk3 Mk4 MMIM Upgrade Manual"
+    replace1Re "RTU MMIM Upgrade Manual" "S3953 Mk3 Mk4 MMIM Asset Upgrade"
+
+let mk5Upgrade : Rewrite = 
+    replace1Re "MK5 MMIM Upgrade Site Works" "S3953 Mk5 MMIM Asset Upgrade"
+
+
 
 let rewriteTitle : Rewrite = 
-    trim >>. choice [ mm3xFirmware; erskineTooLong1; erskineTooLong2; mk3mk4Upgrade ]
+    trim >>. choice [ mm3xFirmware; erskineTooLong1
+                    ; erskineTooLong2; mk3mk4Upgrade
+                    ; mk5Upgrade 
+                    ]
 
 [<Literal>]
 let ResultSchema = 
@@ -77,7 +85,7 @@ let makeTriple (docuRow : DocsRow) : ResultRow =
 
 
 let main () = 
-    let outfile = @"G:\work\Projects\rtu\edms_edits.csv"
+    let outfile = @"G:\work\Projects\rtu\edms_rename.csv"
     let rows = 
         readInstTable () 
             |> Seq.sortBy (fun row -> (row.``File Date``, row.Title))
