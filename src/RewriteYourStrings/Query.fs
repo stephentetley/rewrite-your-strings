@@ -12,39 +12,56 @@ module Query =
     open RewriteYourStrings.RewriteMonad
 
 
+    let internal guardOperation (operation : RegexOptions -> string -> 'a option) 
+                                (regexOpts : RegexOptions)
+                                (input : string) : 'a option = 
+        try 
+            let ans = operation regexOpts input in ans
+        with
+        | _ -> None
+
 
     // ************************************************************************
     // Queries
     
     type StringQuery<'a> = StringRewriter<'a>
 
-    let query (query : RegexOptions -> string -> 'a) : StringRewriter<'a> =
+    let primitiveQuery (query : RegexOptions -> string -> 'a option) : StringQuery<'a> =
         rewrite { 
             let! source = getInput ()
             let! opts = askOptions ()
-            return! (liftOperation <| fun _ -> query opts source)
+            match guardOperation query opts source with
+            | None -> return! rewriteError "primitiveQuery"
+            | Some ans -> return ans
         }
 
+    let queryOption (query : string -> 'a option) : StringQuery<'a> =
+        primitiveQuery (fun _ input -> query input)
+
+    let stringQuery (query : string -> 'a) : StringQuery<'a> =
+        primitiveQuery (fun _ input -> query input |> Some)
+
+
     let length : StringQuery<int> = 
-        getInput () |>> String.length
+        stringQuery String.length
         
 
     let equals (target:string) : StringQuery<bool> = 
-        query (fun _ input -> input = target)
+        stringQuery (fun input -> input = target)
 
     let isLiteralMatch (sub : string) : StringQuery<bool> = 
-        getInput () |>> fun s -> s.Contains(sub)
+        stringQuery <| fun s -> s.Contains(sub)
 
     let isRegexMatch (pattern:string) : StringQuery<bool> = 
-        query <| fun opts input -> 
-                    Regex.IsMatch( input = input
-                                 , pattern = pattern
-                                 , options = opts)
+        primitiveQuery 
+            <| fun opts input -> 
+                Regex.IsMatch( input = input
+                                , pattern = pattern
+                                , options = opts) |> Some
 
 
     let matchValue (pattern:string) : StringQuery<string> = 
-        fromOptionM 
-            << query 
+        primitiveQuery 
             <| fun opts input -> 
                         let rmatch = Regex.Match( input = input
                                                 , pattern = pattern
@@ -53,6 +70,6 @@ module Query =
 
 
     let levenshteinDistance (target:string) : StringQuery<int> = 
-        query <| fun _ input -> Levenshtein.distance input target
+        stringQuery <| fun s -> Levenshtein.distance s target
 
 

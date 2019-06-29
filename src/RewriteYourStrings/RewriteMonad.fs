@@ -168,6 +168,7 @@ module RewriteMonad =
         optionsLocal (fun opts -> RegexOptions.IgnoreCase ||| opts) ma
 
 
+
     // ****************************************************
     // Monadic operations
 

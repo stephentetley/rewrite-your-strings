@@ -18,13 +18,7 @@ module Transform =
     /// e.g Should we follow KURE, then we are unlikely to have name clashes?
     /// This might be uncharacteristic for F# though
 
-    let private guardOperation (operation : RegexOptions -> string -> string option) 
-                                (regexOpts : RegexOptions)
-                                (input : string) : string option = 
-        try 
-            let ans = operation regexOpts input in ans
-        with
-        | _ -> None
+
 
 
 
