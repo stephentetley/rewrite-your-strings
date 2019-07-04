@@ -105,8 +105,14 @@ module Transform =
         stringRewrite (fun s -> s.Replace(oldChar = oldChar, newChar = newChar))
 
 
+    let filterChars (test : char -> bool) : Rewrite = 
+        stringRewrite (String.filter test)
+
     let append (tail : string) : Rewrite = 
         stringRewrite (fun s -> s + tail)
+
+    let replicate (count : int) : Rewrite = 
+        stringRewrite (String.replicate count)
 
     let trim : Rewrite = 
         stringRewrite <| fun s -> s.Trim()

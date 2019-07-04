@@ -29,7 +29,7 @@ open RewriteYourStrings.RewriteMonad
 open RewriteYourStrings
 
 type DocsTable = 
-    ExcelFile< FileName = @"G:\work\Projects\rtu\edms_uploads_3.xlsx",
+    ExcelFile< FileName = @"G:\work\Projects\rtu\edms_uploads_4.xlsx",
                SheetName = "Sheet1!",
                ForceString = true >
 
@@ -52,8 +52,8 @@ let erskineTooLong2 : Rewrite =
     replace1Re "Erskine Battery Asset Replacement" "S3953 Erskine Battery Replacement"
 
 
-let mk3mk4Upgrade : Rewrite = 
-    replace1Re "RTU MMIM Upgrade Manual" "S3953 Mk3 Mk4 MMIM Asset Upgrade"
+let notMMIMUpgrade : Rewrite = 
+    replace1Re "S3953 RTU MMIM Upgrade Manual" "S3953 RTU Asset Replacement"
 
 let mk5Upgrade : Rewrite = 
     replace1Re "MK5 MMIM Upgrade Site Works" "S3953 Mk5 MMIM Asset Upgrade"
@@ -63,8 +63,10 @@ let replaceUnderscore : Rewrite =
 
 let rewriteTitle : Rewrite = 
     trim 
-        >>. choice [ mm3xFirmware; erskineTooLong1
-                   ; erskineTooLong2; mk3mk4Upgrade
+        >>. choice [ mm3xFirmware
+                   ; erskineTooLong1
+                   ; erskineTooLong2
+                   ; notMMIMUpgrade
                    ; mk5Upgrade 
                    ]
         >>. replaceUnderscore
