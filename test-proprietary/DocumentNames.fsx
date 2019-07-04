@@ -58,17 +58,20 @@ let mk3mk4Upgrade : Rewrite =
 let mk5Upgrade : Rewrite = 
     replace1Re "MK5 MMIM Upgrade Site Works" "S3953 Mk5 MMIM Asset Upgrade"
 
-
+let replaceUnderscore : Rewrite = 
+    charReplace '_' ' '
 
 let rewriteTitle : Rewrite = 
-    trim >>. choice [ mm3xFirmware; erskineTooLong1
-                    ; erskineTooLong2; mk3mk4Upgrade
-                    ; mk5Upgrade 
-                    ]
+    trim 
+        >>. choice [ mm3xFirmware; erskineTooLong1
+                   ; erskineTooLong2; mk3mk4Upgrade
+                   ; mk5Upgrade 
+                   ]
+        >>. replaceUnderscore
 
 [<Literal>]
 let ResultSchema = 
-    "Title(string), FileD Date(string), To Update(string), New Title(string)"
+    "Title(string), File Date(string), To Update(string), New Title(string)"
 
 type ResultTable = 
     CsvProvider< Sample = ResultSchema,

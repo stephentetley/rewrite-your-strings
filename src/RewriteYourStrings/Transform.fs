@@ -94,8 +94,16 @@ module Transform =
         } 
 
 
-    let stringMap (errMsg:string) (charOp:char -> char) : Rewrite =
+    let stringMap (errMsg : string) (charOp : char -> char) : Rewrite =
         stringRewrite <| fun s -> String.map charOp s 
+
+    let replace (oldValue : string) (newValue : string) : Rewrite = 
+        stringRewrite (fun s -> s.Replace(oldValue = oldValue, newValue = newValue))
+
+
+    let charReplace (oldChar : char) (newChar : char) : Rewrite = 
+        stringRewrite (fun s -> s.Replace(oldChar = oldChar, newChar = newChar))
+
 
     let append (tail : string) : Rewrite = 
         stringRewrite (fun s -> s + tail)
