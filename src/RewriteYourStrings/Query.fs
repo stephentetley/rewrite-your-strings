@@ -50,7 +50,8 @@ module Query =
         stringQuery (fun input -> input = target)
 
     let forallChars (predicate : char -> bool) : StringQuery<bool> = 
-        StringQuery (String.forall predicate)
+        stringQuery (String.forall predicate)
+
 
     let isLiteralMatch (sub : string) : StringQuery<bool> = 
         stringQuery <| fun s -> s.Contains(sub)

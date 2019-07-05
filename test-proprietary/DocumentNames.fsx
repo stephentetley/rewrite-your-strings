@@ -29,7 +29,7 @@ open RewriteYourStrings.RewriteMonad
 open RewriteYourStrings
 
 type DocsTable = 
-    ExcelFile< FileName = @"G:\work\Projects\rtu\edms_uploads_4.xlsx",
+    ExcelFile< FileName = @"G:\work\Projects\rtu\edms_uploads_5.xlsx",
                SheetName = "Sheet1!",
                ForceString = true >
 

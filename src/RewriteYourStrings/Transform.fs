@@ -94,8 +94,8 @@ module Transform =
         } 
 
 
-    let stringMap (errMsg : string) (charOp : char -> char) : Rewrite =
-        stringRewrite <| fun s -> String.map charOp s 
+    //let stringMap (errMsg : string) (charOp : char -> char) : Rewrite =
+    //    stringRewrite <| fun s -> String.map charOp s 
 
     let replace (oldValue : string) (newValue : string) : Rewrite = 
         stringRewrite (fun s -> s.Replace(oldValue = oldValue, newValue = newValue))
@@ -130,10 +130,10 @@ module Transform =
         stringRewrite <| fun s -> s.PadRight(totalWidth, paddingChar)
 
     let toUpper : Rewrite = 
-        stringMap "toUpper" System.Char.ToUpper
+        stringRewrite (String.map System.Char.ToUpper)
 
     let toLower : Rewrite = 
-        stringMap "toUpper" System.Char.ToLower
+        stringRewrite (String.map System.Char.ToLower)
 
     let takeLeft (len : int) : Rewrite = 
         stringRewrite <| fun s -> s.Substring(0, len)
