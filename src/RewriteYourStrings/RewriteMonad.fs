@@ -61,7 +61,7 @@ module RewriteMonad =
     let (rewrite:StringRewriterBuilder) = new StringRewriterBuilder()
 
     // ****************************************************
-    // Run
+    // Run functions
 
     /// Run a rewrite, return either resulting string or fail message.
     let runStringRewriter (ma : StringRewriter<'a>) 
@@ -70,35 +70,42 @@ module RewriteMonad =
         | Error msg -> Error msg
         | Ok ans-> Ok ans
 
-    /// TODO - extra rewrites should go in Transform
-    let runRewrite (ma : StringRewriter<'a>) 
-                   (input : string) : Result<string, ErrMsg> = 
+    /// Run a rewrite returning a Result of answer or error message.
+    let rewriteResult (ma : StringRewriter<'a>) 
+                        (input : string) : Result<string, ErrMsg> = 
         match apply1 ma RegexOptions.None input with
         | Error msg -> Error msg
         | Ok (_, str) -> Ok str
 
-    let runOptional (ma : StringRewriter<'a>) 
-        (input : string) : string option = 
-            match runRewrite ma input with
+    /// Run a rewrite returning Some answer on success or None if it fails.
+    let rewriteOption (ma : StringRewriter<'a>) 
+                        (input : string) : string option = 
+            match rewriteResult ma input with
             | Error _ -> None
             | Ok ans -> Some ans
 
-
-    let unsafeRewrite (ma:StringRewriter<'a>) (input:string) : string = 
-        match runRewrite ma input with
+    /// Run a rewrite return the answer on success or if it fails 
+    /// raise an exception
+    let rewriteUnsafe (ma:StringRewriter<'a>) (input:string) : string = 
+        match rewriteResult ma input with
         | Error msg -> failwith msg
         | Ok ans -> ans
 
-
+    /// Run a rewrite returning the answer on success or the initial input
+    /// on failure
     let rewriteOrId (ma:StringRewriter<'a>) (input:string) : string = 
-        match runRewrite ma input with
+        match rewriteResult ma input with
         | Error _ -> input
         | Ok ans -> ans
 
+    /// Run a rewrite returning the answer on success or an empty string
+    /// on failure
     let rewriteOrBlank (ma:StringRewriter<'a>) (input:string) : string = 
-        match runRewrite ma input with
+        match rewriteResult ma input with
         | Error _ -> ""
         | Ok ans -> ans
+
+
 
     // ****************************************************
     // Input

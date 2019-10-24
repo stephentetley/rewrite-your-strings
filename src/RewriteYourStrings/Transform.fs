@@ -129,9 +129,12 @@ module Transform =
     let padRight (totalWidth:int) (paddingChar:char) : Rewrite = 
         stringRewrite <| fun s -> s.PadRight(totalWidth, paddingChar)
 
+
+    /// Apply `ToUpper` to all the characters in the string.
     let toUpper : Rewrite = 
         stringRewrite (String.map System.Char.ToUpper)
 
+    /// Apply `ToLower` to all the characters in the string.
     let toLower : Rewrite = 
         stringRewrite (String.map System.Char.ToLower)
 
